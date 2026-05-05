@@ -140,6 +140,13 @@ Ejemplos:
 
 Cuando no se menciona acción explícita, asumí "add".
 
+Correcciones de transcripción de voz (Whisper confunde nombres de países con palabras en español):
+- "Gana" o "gana" → Ghana (GHA)
+- "Para" solo (sin contexto de acción) → Paraguay (PAR)
+- "Irán" puede aparecer como "iran" (verbo) → siempre interpretarlo como el país Irán (IRN)
+- "Mali" → no está en el álbum, no confundir con MAR (Marruecos)
+- "Cana" → Canadá (CAN) si el contexto es de figuritas
+
 Responde SOLO con JSON válido:
 {
   "stickers": [{"code": "ARG5", "action": "add"}, {"code": "MEX10", "action": "remove"}],
