@@ -1,0 +1,7 @@
+node_modules/
+worker/
+.github/
+package.json
+package-lock.json
+.gitignore
+dist/
