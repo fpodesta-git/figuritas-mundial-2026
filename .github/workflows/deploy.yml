@@ -1,20 +1,17 @@
-name: Deploy Worker
+name: Deploy
 
 on:
   push:
     branches: [main]
-    paths:
-      - "worker/**"
   workflow_dispatch:
 
 jobs:
   deploy-worker:
+    name: Deploy Worker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Deploy Cloudflare Worker
-        uses: cloudflare/wrangler-action@v3
+      - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -23,3 +20,18 @@ jobs:
             GROQ_API_KEY
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+  deploy-pages:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build static files
+        run: mkdir -p dist/css dist/js && cp index.html dist/ && cp -r css/. dist/css/ && cp -r js/. dist/js/
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=figuritas-mundial-2026 --commit-dirty=true
