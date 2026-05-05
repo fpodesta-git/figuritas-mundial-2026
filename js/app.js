@@ -1,6 +1,6 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Actualizá esta URL después del primer deploy del Worker
-const WORKER_URL = "https://figuritas-worker.fpodesta-git.workers.dev";
+const WORKER_URL = "https://figuritas-worker.facundo-podesta.workers.dev";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
