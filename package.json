@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "build": "mkdir -p dist/css dist/js && cp index.html dist/ && cp -r css/. dist/css/ && cp -r js/. dist/js/",
     "deploy:worker": "cd worker && wrangler deploy",
     "secret:groq": "cd worker && wrangler secret put GROQ_API_KEY"
   }
