@@ -2,6 +2,11 @@
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 
+// En Cloudflare Pages las llamadas van al proxy (sin exponer el API key).
+// En local (localhost / file://) se usan llamadas directas con el key guardado.
+const IS_LOCAL = ["localhost", "127.0.0.1", ""].includes(window.location.hostname)
+  || window.location.protocol === "file:";
+
 function getApiKey() {
   return localStorage.getItem("groq_api_key") || "";
 }
@@ -54,20 +59,24 @@ function getStats() {
 // ─── Groq: Transcribe audio ───────────────────────────────────────────────────
 
 async function transcribeAudio(audioBlob) {
-  const key = getApiKey();
-  if (!key) throw new Error("API key no configurada");
-
   const formData = new FormData();
   formData.append("file", audioBlob, "audio.webm");
   formData.append("model", "whisper-large-v3");
   formData.append("language", "es");
   formData.append("response_format", "json");
 
-  const res = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}` },
-    body: formData
-  });
+  let res;
+  if (IS_LOCAL) {
+    const key = getApiKey();
+    if (!key) throw new Error("Ingresá tu API key de Groq (modo local)");
+    res = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+      body: formData
+    });
+  } else {
+    res = await fetch("/api/transcribe", { method: "POST", body: formData });
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -129,25 +138,32 @@ Responde SOLO con JSON válido, sin texto adicional:
 Si no hay figuritas mencionadas, devuelve: {"stickers": [], "unknown": []}`;
 
 async function parseStickersFromText(text) {
-  const key = getApiKey();
-  if (!key) throw new Error("API key no configurada");
+  const payload = {
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: text }
+    ],
+    temperature: 0,
+    response_format: { type: "json_object" }
+  };
 
-  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: text }
-      ],
-      temperature: 0,
-      response_format: { type: "json_object" }
-    })
-  });
+  let res;
+  if (IS_LOCAL) {
+    const key = getApiKey();
+    if (!key) throw new Error("Ingresá tu API key de Groq (modo local)");
+    res = await fetch(`${GROQ_BASE}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  } else {
+    res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -446,7 +462,10 @@ document.querySelectorAll(".filter-btn").forEach(btn => {
   });
 });
 
-// ─── Config modal ─────────────────────────────────────────────────────────────
+// ─── Config modal (solo en modo local) ───────────────────────────────────────
+
+const configBtn = document.getElementById("config-btn");
+if (!IS_LOCAL) configBtn.style.display = "none";
 
 function showConfigModal() {
   document.getElementById("config-modal").classList.remove("hidden");
@@ -468,7 +487,7 @@ document.getElementById("config-modal").addEventListener("click", e => {
   if (e.target === document.getElementById("config-modal")) hideConfigModal();
 });
 
-document.getElementById("config-btn").addEventListener("click", showConfigModal);
+configBtn.addEventListener("click", showConfigModal);
 
 // ─── Export duplicates ────────────────────────────────────────────────────────
 
@@ -517,6 +536,6 @@ function showToast(msg, type = "ok") {
 loadState();
 renderAll();
 
-if (!getApiKey()) {
+if (IS_LOCAL && !getApiKey()) {
   setTimeout(() => showConfigModal(), 500);
 }
