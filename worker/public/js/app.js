@@ -1,4 +1,3 @@
-// ─── Config ───────────────────────────────────────────────────────────────────
 const WORKER_URL = "";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -6,18 +5,9 @@ const WORKER_URL = "";
 function getAuth() {
   try { return JSON.parse(localStorage.getItem("figuritas_auth") || "null"); } catch { return null; }
 }
-
-function setAuth(auth) {
-  localStorage.setItem("figuritas_auth", JSON.stringify(auth));
-}
-
-function clearAuth() {
-  localStorage.removeItem("figuritas_auth");
-}
-
-function authHeaders(auth) {
-  return { Authorization: `Bearer ${auth.token}` };
-}
+function setAuth(auth) { localStorage.setItem("figuritas_auth", JSON.stringify(auth)); }
+function clearAuth()   { localStorage.removeItem("figuritas_auth"); }
+function authHeaders(auth) { return { Authorization: `Bearer ${auth.token}` }; }
 
 async function hashPhone(phone) {
   const digits = phone.replace(/\D/g, "");
@@ -40,14 +30,14 @@ async function loginWithPhone(phone) {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-// events: array de todos los eventos cargados desde R2
-// collected: {stickerNumber(str) -> count} — derivado de events
+// events: [{id, ts, type:"add"|"remove", sticker:"ARG5"}]
+// collected: {"ARG5": 2, "MEX1": 1, ...}
 let state = { events: [], collected: {} };
 
 function computeCollected(events) {
   const counts = {};
   for (const ev of events) {
-    const k = String(ev.sticker);
+    const k = ev.sticker;
     if (ev.type === "add")    counts[k] = (counts[k] || 0) + 1;
     if (ev.type === "remove") counts[k] = Math.max(0, (counts[k] || 0) - 1);
   }
@@ -55,7 +45,7 @@ function computeCollected(events) {
   return counts;
 }
 
-function getCount(n) { return state.collected[String(n)] || 0; }
+function getCount(code) { return state.collected[code] || 0; }
 
 function getStats() {
   let inAlbum = 0, duplicates = 0;
@@ -66,10 +56,10 @@ function getStats() {
   return { inAlbum, duplicates, total: TOTAL_STICKERS };
 }
 
-// ─── API calls ────────────────────────────────────────────────────────────────
+// ─── API ──────────────────────────────────────────────────────────────────────
 
 async function loadAlbum() {
-  const auth = await ensureAuth();
+  const auth = getAuth();
   const res = await fetch(`${WORKER_URL}/api/album/${auth.tenantId}`, {
     headers: authHeaders(auth),
   });
@@ -104,7 +94,7 @@ async function deleteEvent(evId) {
   state.collected = computeCollected(state.events);
 }
 
-// ─── Groq: Transcribir audio ──────────────────────────────────────────────────
+// ─── Groq ─────────────────────────────────────────────────────────────────────
 
 async function transcribeAudio(audioBlob) {
   const formData = new FormData();
@@ -112,52 +102,44 @@ async function transcribeAudio(audioBlob) {
   formData.append("model", "whisper-large-v3");
   formData.append("language", "es");
   formData.append("response_format", "json");
-
   const res = await fetch(`${WORKER_URL}/api/transcribe`, { method: "POST", body: formData });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error?.message || `HTTP ${res.status}`);
   }
-  const data = await res.json();
-  return data.text || "";
+  return (await res.json()).text || "";
 }
 
-// ─── Groq: Parsear figuritas del texto ───────────────────────────────────────
+const SYSTEM_PROMPT = `Eres un asistente para registrar figuritas del álbum Panini FIFA World Cup 2026™.
 
-const SYSTEM_PROMPT = `Eres un asistente que ayuda a registrar figuritas del álbum Panini oficial del FIFA World Cup 2026™.
+Cada figurita tiene un código único: {CÓDIGO_EQUIPO}{NÚMERO}
+- Equipos por grupo y sus códigos:
+  Grupo A: MEX (México), RSA (Sudáfrica), KOR (Corea del Sur), CZE (Rep. Checa)
+  Grupo B: CAN (Canadá), BIH (Bosnia), QAT (Qatar), SUI (Suiza)
+  Grupo C: BRA (Brasil), MAR (Marruecos), HAI (Haití), SCO (Escocia)
+  Grupo D: USA (EEUU), PAR (Paraguay), AUS (Australia), TUR (Turquía)
+  Grupo E: GER (Alemania), CUW (Curazao), CIV (Costa de Marfil), ECU (Ecuador)
+  Grupo F: NED (Países Bajos), JAP (Japón), SWE (Suecia), TUN (Túnez)
+  Grupo G: BEL (Bélgica), EGY (Egipto), IRN (Irán), NZL (Nueva Zelanda)
+  Grupo H: ESP (España), CPV (Cabo Verde), KSA (Arabia Saudita), URU (Uruguay)
+  Grupo I: FRA (Francia), SEN (Senegal), IRQ (Iraq), NOR (Noruega)
+  Grupo J: ARG (Argentina), ALG (Argelia), AUT (Austria), JOR (Jordania)
+  Grupo K: POR (Portugal), COD (RD Congo), UZB (Uzbekistán), COL (Colombia)
+  Grupo L: ENG (Inglaterra), CRO (Croacia), GHA (Ghana), PAN (Panamá)
+  Especiales FIFA: FW1-FW19
+  Coca-Cola: CC1-CC14
 
-El álbum tiene ${TOTAL_STICKERS} figuritas numeradas del 1 al 674.
-
-Estructura del álbum (rangos de figuritas por equipo):
-- Introducción: 1-10
-- Estadios/Sedes: 11-50
-- Grupo A: México(51-63), Bélgica(64-76), Senegal(77-89), Japón(90-102)
-- Grupo B: Estados Unidos(103-115), Croacia(116-128), Marruecos(129-141), Corea del Sur(142-154)
-- Grupo C: Canadá(155-167), Portugal(168-180), Australia(181-193), Colombia(194-206)
-- Grupo D: Brasil(207-219), Dinamarca(220-232), Nigeria(233-245), Jordania(246-258)
-- Grupo E: Argentina(259-271), Suiza(272-284), Egipto(285-297), Bolivia(298-310)
-- Grupo F: España(311-323), Irán(324-336), Camerún(337-349), Ecuador(350-362)
-- Grupo G: Francia(363-375), Serbia(376-388), Túnez(389-401), Venezuela(402-414)
-- Grupo H: Inglaterra(415-427), Austria(428-440), Sudáfrica(441-453), Uruguay(454-466)
-- Grupo I: Alemania(467-479), Hungría(480-492), Ghana(493-505), Nueva Zelanda(506-518)
-- Grupo J: Países Bajos(519-531), Escocia(532-544), Arabia Saudita(545-557), Panamá(558-570)
-- Grupo K: Rumania(571-583), Turquía(584-596), Costa de Marfil(597-609), Honduras(610-622)
-- Grupo L: Uzbekistán(623-635), Iraq(636-648), Jamaica(649-661), Costa Rica(662-674)
-
-Dentro de cada equipo (rango de 13 figuritas):
-- Posición 1: Escudo (brillante)
-- Posición 2: Foto del equipo
-- Posiciones 3-13: Jugadores
-
-Reglas de conversión:
-- "la X de [país]" → número global = start_del_país + X - 1
-- "el escudo de [país]" → número global = start_del_país
-- "la foto de [país]" o "el equipo de [país]" → número global = start_del_país + 1
-- Un número solo (ej: "la 320") → número global directo
+- Cada equipo tiene figuritas del 1 al 20.
+- El usuario puede decir cosas como:
+  "conseguí la 5 de Argentina" → ARG5
+  "tengo la ARG5" → ARG5
+  "la figurita 3 de Brasil y la 20 de Francia" → BRA3, FRA20
+  "la MEX10" → MEX10
+  "la especial 3" → FW3
 
 Responde SOLO con JSON válido:
 {
-  "stickers": [{"global": 263, "desc": "Argentina - Messi"}],
+  "stickers": [{"code": "ARG5"}, {"code": "BRA3"}],
   "unknown": ["texto que no pudiste interpretar"]
 }
 
@@ -169,10 +151,7 @@ async function parseStickersFromText(text) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ],
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: text }],
       temperature: 0,
       response_format: { type: "json_object" },
     }),
@@ -185,17 +164,14 @@ async function parseStickersFromText(text) {
   return JSON.parse(data.choices?.[0]?.message?.content || "{}");
 }
 
-// ─── Voice Recording ──────────────────────────────────────────────────────────
+// ─── Recording ────────────────────────────────────────────────────────────────
 
-let mediaRecorder = null;
-let audioChunks = [];
-let isRecording = false;
+let mediaRecorder = null, audioChunks = [], isRecording = false;
 
 async function startRecording() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   audioChunks = [];
-  const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg"]
-    .find(t => MediaRecorder.isTypeSupported(t)) || "";
+  const mimeType = ["audio/webm;codecs=opus","audio/webm","audio/ogg"].find(t => MediaRecorder.isTypeSupported(t)) || "";
   mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
   mediaRecorder.start(100);
@@ -214,7 +190,7 @@ async function stopRecording() {
   });
 }
 
-// ─── UI ───────────────────────────────────────────────────────────────────────
+// ─── Render ───────────────────────────────────────────────────────────────────
 
 let currentFilter = "all";
 
@@ -223,62 +199,64 @@ function renderProgress() {
   const pct = Math.round((inAlbum / total) * 100);
   document.getElementById("progress-fill").style.width = pct + "%";
   document.getElementById("progress-text").textContent =
-    `${inAlbum} / ${total} figuritas (${pct}%) · ${duplicates} repetida${duplicates !== 1 ? "s" : ""}`;
+    `${inAlbum} / ${total} (${pct}%) · ${duplicates} repetida${duplicates !== 1 ? "s" : ""}`;
 }
 
-function filterSticker(n) {
-  const count = getCount(n);
-  if (currentFilter === "collected")  return count >= 1;
-  if (currentFilter === "missing")    return count === 0;
-  if (currentFilter === "duplicates") return count >= 2;
+function filterOk(code) {
+  const c = getCount(code);
+  if (currentFilter === "collected")  return c >= 1;
+  if (currentFilter === "missing")    return c === 0;
+  if (currentFilter === "duplicates") return c >= 2;
   return true;
 }
 
-function stickerClass(n) {
-  const c = getCount(n);
-  return c === 0 ? "missing" : c === 1 ? "collected" : "duplicate";
-}
-
-function renderStickerEl(n, desc, shiny) {
-  const count = getCount(n);
-  const badge = count >= 2 ? `<span class="dup-badge">+${count - 1}</span>` : "";
-  return `<div class="sticker ${stickerClass(n)}${shiny ? " shiny" : ""}" data-n="${n}" title="${desc}">
-    ${n}${badge}
-  </div>`;
+function stickerEl(code) {
+  const c = getCount(code);
+  const cls = c === 0 ? "missing" : c === 1 ? "collected" : "duplicate";
+  const info = STICKER_MAP[code];
+  const badge = c >= 2 ? `<span class="dup-badge">+${c-1}</span>` : "";
+  return `<div class="sticker ${cls}" data-code="${code}" title="${info?.teamName || ""} ${info?.localN || code}">${info?.localN || code}${badge}</div>`;
 }
 
 function renderAlbum() {
   const container = document.getElementById("groups-container");
   container.innerHTML = "";
 
-  for (const section of ALBUM_DATA.sections) {
-    if (currentFilter !== "all" && !section.stickers.some(s => filterSticker(s.n))) continue;
+  // FIFA Especiales
+  const fwCodes = Array.from({length: FW_COUNT}, (_, i) => `FW${i+1}`);
+  const ccCodes = Array.from({length: CC_COUNT}, (_, i) => `CC${i+1}`);
+  const specials = [
+    { name: "🏆 FIFA Especiales", codes: fwCodes, color: "#f5a623" },
+    { name: "🥤 Coca-Cola", codes: ccCodes, color: "#e74c3c" },
+  ];
+
+  for (const s of specials) {
+    if (currentFilter !== "all" && !s.codes.some(filterOk)) continue;
     const div = document.createElement("div");
     div.className = "group-section";
-    div.innerHTML = `<h3 style="border-color:${section.color || "#555"}">${section.name}</h3>
-      <div class="stickers-grid">${section.stickers.map(s => renderStickerEl(s.n, s.desc, s.shiny)).join("")}</div>`;
+    div.innerHTML = `<h3 style="border-color:${s.color}">${s.name}</h3>
+      <div class="stickers-grid">${s.codes.map(stickerEl).join("")}</div>`;
     container.appendChild(div);
   }
 
-  for (const group of ALBUM_DATA.groups) {
+  // Grupos
+  for (const group of GROUPS) {
     const teamsRow = document.createElement("div");
     teamsRow.className = "teams-row";
 
     for (const team of group.teams) {
-      const stickers = Array.from({ length: 13 }, (_, i) => team.start + i).filter(n => STICKER_MAP[n]);
-      if (currentFilter !== "all" && !stickers.some(n => filterSticker(n))) continue;
-      const collected = stickers.filter(n => getCount(n) >= 1).length;
+      const codes = Array.from({length: 20}, (_, i) => `${team.code}${i+1}`);
+      if (currentFilter !== "all" && !codes.some(filterOk)) continue;
+      const collected = codes.filter(c => getCount(c) >= 1).length;
       const teamDiv = document.createElement("div");
       teamDiv.className = "team-card";
       teamDiv.innerHTML = `
         <div class="team-header">
           <span class="team-flag">${team.flag}</span>
           <span class="team-name">${team.name}</span>
-          <span class="team-pct">${Math.round(collected / stickers.length * 100)}%</span>
+          <span class="team-pct">${Math.round(collected/20*100)}%</span>
         </div>
-        <div class="stickers-grid">
-          ${stickers.map(n => renderStickerEl(n, STICKER_MAP[n].desc, STICKER_MAP[n].shiny)).join("")}
-        </div>`;
+        <div class="stickers-grid">${codes.map(stickerEl).join("")}</div>`;
       teamsRow.appendChild(teamDiv);
     }
 
@@ -295,14 +273,14 @@ function renderDuplicates() {
   const list = document.getElementById("duplicates-list");
   const dups = Object.entries(state.collected)
     .filter(([, c]) => c >= 2)
-    .map(([n, c]) => ({ n: parseInt(n), count: c, sticker: STICKER_MAP[parseInt(n)] }))
-    .filter(d => d.sticker)
-    .sort((a, b) => a.n - b.n);
+    .map(([code, count]) => ({ code, count, info: STICKER_MAP[code] }))
+    .filter(d => d.info)
+    .sort((a, b) => a.code.localeCompare(b.code));
 
   list.innerHTML = dups.length
     ? dups.map(d => `<div class="dup-item">
-        <span class="dup-n">#${d.n}</span>
-        <span class="dup-desc">${d.sticker.desc}</span>
+        <span class="dup-n">${d.code}</span>
+        <span class="dup-desc">${d.info.teamName}</span>
         <span class="dup-count">×${d.count - 1} para cambiar</span>
       </div>`).join("")
     : `<p class="empty-msg">Sin figuritas repetidas por ahora</p>`;
@@ -319,43 +297,37 @@ function renderAll() {
 document.addEventListener("click", async e => {
   const el = e.target.closest(".sticker");
   if (!el) return;
-  const n = parseInt(el.dataset.n);
+  const code = el.dataset.code;
+  if (!code || !STICKER_MAP[code]) return;
 
   if (e.shiftKey) {
-    if (getCount(n) === 0) return;
-    // Remueve el último "add" event de esta figurita
-    const lastAdd = [...state.events].reverse().find(ev => ev.type === "add" && ev.sticker === n);
+    if (getCount(code) === 0) return;
+    const lastAdd = [...state.events].reverse().find(ev => ev.type === "add" && ev.sticker === code);
     if (!lastAdd) return;
     el.style.opacity = "0.5";
     try {
       await deleteEvent(lastAdd.id);
-      showToast(`Removida figurita #${n}`);
+      showToast(`Removida ${code}`);
       renderAll();
-    } catch (err) {
-      showToast(err.message, "error");
-    } finally {
-      el.style.opacity = "";
-    }
+    } catch (err) { showToast(err.message, "error"); }
+    finally { el.style.opacity = ""; }
   } else {
     el.style.opacity = "0.5";
     try {
-      await postEvent("add", n);
-      const count = getCount(n);
-      showToast(count === 1 ? `✓ Figurita #${n} al álbum` : `+1 repetida de #${n} (total: ${count})`);
+      await postEvent("add", code);
+      const c = getCount(code);
+      showToast(c === 1 ? `✓ ${code} al álbum` : `+1 repetida de ${code} (×${c})`);
       renderAll();
-    } catch (err) {
-      showToast(err.message, "error");
-    } finally {
-      el.style.opacity = "";
-    }
+    } catch (err) { showToast(err.message, "error"); }
+    finally { el.style.opacity = ""; }
   }
 });
 
-// ─── Voice button ─────────────────────────────────────────────────────────────
+// ─── Voice ────────────────────────────────────────────────────────────────────
 
-const recordBtn = document.getElementById("record-btn");
+const recordBtn   = document.getElementById("record-btn");
 const transcriptEl = document.getElementById("transcript-display");
-const resultEl = document.getElementById("result-display");
+const resultEl    = document.getElementById("result-display");
 
 recordBtn.addEventListener("mousedown", handleRecordStart);
 recordBtn.addEventListener("touchstart", e => { e.preventDefault(); handleRecordStart(); });
@@ -371,9 +343,7 @@ async function handleRecordStart() {
     recordBtn.querySelector("span:last-child").textContent = "Grabando... soltá para enviar";
     transcriptEl.textContent = "";
     resultEl.innerHTML = "";
-  } catch (err) {
-    showToast("Error al acceder al micrófono: " + err.message, "error");
-  }
+  } catch (err) { showToast("Error al acceder al micrófono: " + err.message, "error"); }
 }
 
 async function handleRecordStop() {
@@ -384,13 +354,12 @@ async function handleRecordStop() {
 
   try {
     const blob = await stopRecording();
-
     transcriptEl.textContent = "Transcribiendo...";
     const text = await transcribeAudio(blob);
     transcriptEl.textContent = `"${text}"`;
 
     if (!text.trim()) {
-      resultEl.innerHTML = `<span class="warn">No se detectó audio claro. Intentá de nuevo.</span>`;
+      resultEl.innerHTML = `<span class="warn">No se detectó audio claro.</span>`;
       return;
     }
 
@@ -403,19 +372,17 @@ async function handleRecordStop() {
     }
 
     const added = [], repeated = [];
-    for (const { global: n } of parsed.stickers) {
-      if (!STICKER_MAP[n]) continue;
-      const prev = getCount(n);
-      await postEvent("add", n);
-      if (prev === 0) added.push(n); else repeated.push(n);
+    for (const { code } of parsed.stickers) {
+      if (!STICKER_MAP[code]) continue;
+      const prev = getCount(code);
+      await postEvent("add", code);
+      if (prev === 0) added.push(code); else repeated.push(code);
     }
     renderAll();
 
     let html = "";
-    if (added.length) html += `<div class="result-added"><strong>✓ Agregadas al álbum:</strong>
-      ${added.map(n => `<span class="r-tag new">#${n} ${STICKER_MAP[n]?.desc || ""}</span>`).join("")}</div>`;
-    if (repeated.length) html += `<div class="result-dup"><strong>🔁 Repetidas (+1):</strong>
-      ${repeated.map(n => `<span class="r-tag dup">#${n} ×${getCount(n)}</span>`).join("")}</div>`;
+    if (added.length)    html += `<div class="result-added"><strong>✓ Al álbum:</strong> ${added.map(c => `<span class="r-tag new">${c}</span>`).join("")}</div>`;
+    if (repeated.length) html += `<div class="result-dup"><strong>🔁 Repetidas:</strong> ${repeated.map(c => `<span class="r-tag dup">${c} ×${getCount(c)}</span>`).join("")}</div>`;
     if (parsed.unknown?.length) html += `<div class="result-unk"><strong>⚠ No entendí:</strong> ${parsed.unknown.join(", ")}</div>`;
     resultEl.innerHTML = html;
   } catch (err) {
@@ -443,23 +410,23 @@ document.querySelectorAll(".filter-btn").forEach(btn => {
 document.getElementById("export-btn").addEventListener("click", () => {
   const dups = Object.entries(state.collected)
     .filter(([, c]) => c >= 2)
-    .map(([n, c]) => {
-      const s = STICKER_MAP[parseInt(n)];
-      return `#${n} ${s?.desc || ""} (×${c - 1} para cambiar)`;
+    .map(([code, c]) => {
+      const info = STICKER_MAP[code];
+      return `${code} - ${info?.teamName || ""} (×${c-1} para cambiar)`;
     }).sort();
   if (!dups.length) { showToast("No tenés figuritas repetidas"); return; }
-  const blob = new Blob([`Figuritas para cambiar - Mundial 2026\n${"─".repeat(40)}\n${dups.join("\n")}`], { type: "text/plain" });
-  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "repetidas-mundial-2026.txt" });
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([`Repetidas - Mundial 2026\n${"─".repeat(40)}\n${dups.join("\n")}`], {type:"text/plain"})),
+    download: "repetidas-mundial-2026.txt"
+  });
+  a.click(); URL.revokeObjectURL(a.href);
 });
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   if (!confirm("¿Salir? Podés volver a entrar con tu número de celular.")) return;
-  clearAuth();
-  location.reload();
+  clearAuth(); location.reload();
 });
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -474,31 +441,20 @@ function showToast(msg, type = "ok") {
 
 // ─── Login screen ─────────────────────────────────────────────────────────────
 
-function showApp() {
-  document.getElementById("login-screen").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-}
-
-function showLogin() {
-  document.getElementById("login-screen").classList.remove("hidden");
-  document.getElementById("app").classList.add("hidden");
-}
+function showApp()   { document.getElementById("login-screen").classList.add("hidden"); document.getElementById("app").classList.remove("hidden"); }
+function showLogin() { document.getElementById("login-screen").classList.remove("hidden"); document.getElementById("app").classList.add("hidden"); }
 
 async function handleLogin() {
   const phone = document.getElementById("phone-input").value.trim();
   const errEl = document.getElementById("login-error");
   const btn   = document.getElementById("login-btn");
-
-  if (phone.replace(/\D/g, "").length < 8) {
+  if (phone.replace(/\D/g,"").length < 8) {
     errEl.textContent = "Ingresá un número válido";
     errEl.classList.remove("hidden");
     return;
   }
-
   errEl.classList.add("hidden");
-  btn.disabled = true;
-  btn.textContent = "Entrando...";
-
+  btn.disabled = true; btn.textContent = "Entrando...";
   try {
     await loginWithPhone(phone);
     await loadAlbumAndRender();
@@ -506,45 +462,30 @@ async function handleLogin() {
   } catch (err) {
     errEl.textContent = err.message;
     errEl.classList.remove("hidden");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Entrar";
-  }
+  } finally { btn.disabled = false; btn.textContent = "Entrar"; }
 }
 
 document.getElementById("login-btn").addEventListener("click", handleLogin);
-document.getElementById("phone-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") handleLogin();
-});
+document.getElementById("phone-input").addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 async function loadAlbumAndRender() {
   document.getElementById("loading").classList.remove("hidden");
   document.getElementById("album-section").classList.add("hidden");
-
-  try {
-    await loadAlbum();
-  } catch (err) {
-    showToast("Error al cargar el álbum: " + err.message, "error");
-  } finally {
+  try { await loadAlbum(); }
+  catch (err) { showToast("Error al cargar el álbum: " + err.message, "error"); }
+  finally {
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("album-section").classList.remove("hidden");
   }
-
   renderAll();
 }
 
 async function init() {
   const auth = getAuth();
-  if (auth?.tenantId && auth?.token) {
-    // Ya tiene sesión → ir directo al álbum
-    showApp();
-    await loadAlbumAndRender();
-  } else {
-    // Sin sesión → mostrar login
-    showLogin();
-  }
+  if (auth?.tenantId && auth?.token) { showApp(); await loadAlbumAndRender(); }
+  else showLogin();
 }
 
 init();
