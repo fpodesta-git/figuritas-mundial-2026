@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Álbum Figuritas Mundial 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🏆 Álbum Mundial 2026</h1>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+        <span id="progress-text">Cargando...</span>
+      </div>
+      <div class="header-right">
+        <button class="btn" id="export-btn">Exportar repetidas</button>
+        <button class="btn btn-danger" id="reset-btn">Resetear</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Voice input -->
+      <section id="voice-section">
+        <button id="record-btn">
+          <span class="mic-icon">🎤</span>
+          <span>Presioná para hablar</span>
+        </button>
+        <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted)">
+          Mantené presionado · Decí las figuritas que conseguiste · Soltá para procesar
+        </p>
+        <div id="transcript-display"></div>
+        <div id="result-display"></div>
+      </section>
+
+      <!-- Loading -->
+      <div id="loading" class="hidden" style="text-align:center;padding:3rem;color:var(--text-muted)">
+        Cargando álbum...
+      </div>
+
+      <!-- Filter -->
+      <div id="filter-controls">
+        <button class="filter-btn active" data-filter="all">Todo el álbum</button>
+        <button class="filter-btn" data-filter="collected">Las que tengo</button>
+        <button class="filter-btn" data-filter="missing">Me faltan</button>
+        <button class="filter-btn" data-filter="duplicates">Repetidas</button>
+      </div>
+
+      <!-- Album grid -->
+      <section id="album-section" class="hidden">
+        <div id="groups-container"></div>
+      </section>
+
+      <!-- Duplicates -->
+      <section id="duplicates-section">
+        <h2>Figuritas para cambiar</h2>
+        <div id="duplicates-list"></div>
+      </section>
+    </main>
+
+    <footer>
+      <span id="tenant-id" style="font-size:0.7rem;color:var(--text-muted);font-family:monospace"></span>
+    </footer>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="js/album.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
