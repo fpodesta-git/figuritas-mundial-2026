@@ -8,7 +8,7 @@ const IS_LOCAL = ["localhost", "127.0.0.1", ""].includes(window.location.hostnam
   || window.location.protocol === "file:";
 
 function getApiKey() {
-  return localStorage.getItem("groq_api_key") || "";
+  return (window.GROQ_API_KEY || "") || localStorage.getItem("groq_api_key") || "";
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
