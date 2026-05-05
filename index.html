@@ -12,12 +12,11 @@
       <h1>🏆 Álbum Mundial 2026</h1>
       <div id="progress-bar">
         <div id="progress-fill"></div>
-        <span id="progress-text">0 / 0 figuritas</span>
+        <span id="progress-text">Cargando...</span>
       </div>
       <div class="header-right">
         <button class="btn" id="export-btn">Exportar repetidas</button>
         <button class="btn btn-danger" id="reset-btn">Resetear</button>
-        <button class="btn" id="config-btn">API Key</button>
       </div>
     </header>
 
@@ -35,6 +34,11 @@
         <div id="result-display"></div>
       </section>
 
+      <!-- Loading -->
+      <div id="loading" class="hidden" style="text-align:center;padding:3rem;color:var(--text-muted)">
+        Cargando álbum...
+      </div>
+
       <!-- Filter -->
       <div id="filter-controls">
         <button class="filter-btn active" data-filter="all">Todo el álbum</button>
@@ -44,35 +48,24 @@
       </div>
 
       <!-- Album grid -->
-      <section id="album-section">
+      <section id="album-section" class="hidden">
         <div id="groups-container"></div>
       </section>
 
-      <!-- Duplicates list -->
+      <!-- Duplicates -->
       <section id="duplicates-section">
         <h2>Figuritas para cambiar</h2>
         <div id="duplicates-list"></div>
       </section>
     </main>
+
+    <footer>
+      <span id="tenant-id" style="font-size:0.7rem;color:var(--text-muted);font-family:monospace"></span>
+    </footer>
   </div>
 
-  <!-- Config modal -->
-  <div id="config-modal" class="modal hidden">
-    <div class="modal-content">
-      <h2>Configurar API Key de Groq</h2>
-      <label>API Key</label>
-      <input type="password" id="groq-api-key" placeholder="gsk_...">
-      <p class="modal-hint">
-        Obtené tu API key gratis en <a href="https://console.groq.com" target="_blank">console.groq.com</a>
-      </p>
-      <button class="btn" id="save-config" style="width:100%;padding:0.65rem">Guardar</button>
-    </div>
-  </div>
-
-  <!-- Toast -->
   <div id="toast"></div>
 
-  <script src="config.js"></script>
   <script src="js/album.js"></script>
   <script src="js/app.js"></script>
 </body>

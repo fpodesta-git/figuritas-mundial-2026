@@ -1,0 +1,10 @@
+name = "figuritas-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+[[r2_buckets]]
+binding = "ALBUM"
+bucket_name = "figuritas-album"
+
+# GROQ_API_KEY se setea como secret:
+# wrangler secret put GROQ_API_KEY

@@ -1,24 +1,24 @@
-name: Deploy to Cloudflare Pages
+name: Deploy Worker
 
 on:
   push:
     branches: [main]
+    paths:
+      - "worker/**"
 
 jobs:
-  deploy:
+  deploy-worker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
-        run: npm run build
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+      - name: Deploy Cloudflare Worker
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: figuritas-mundial-2026
-          directory: dist
+          workingDirectory: worker
+          secrets: |
+            GROQ_API_KEY
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
