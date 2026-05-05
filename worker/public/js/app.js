@@ -113,7 +113,7 @@ async function transcribeAudio(audioBlob) {
 const SYSTEM_PROMPT = `Eres un asistente para registrar figuritas del álbum Panini FIFA World Cup 2026™.
 
 Cada figurita tiene un código único: {CÓDIGO_EQUIPO}{NÚMERO}
-- Equipos por grupo y sus códigos:
+Equipos por grupo:
   Grupo A: MEX (México), RSA (Sudáfrica), KOR (Corea del Sur), CZE (Rep. Checa)
   Grupo B: CAN (Canadá), BIH (Bosnia), QAT (Qatar), SUI (Suiza)
   Grupo C: BRA (Brasil), MAR (Marruecos), HAI (Haití), SCO (Escocia)
@@ -126,20 +126,23 @@ Cada figurita tiene un código único: {CÓDIGO_EQUIPO}{NÚMERO}
   Grupo J: ARG (Argentina), ALG (Argelia), AUT (Austria), JOR (Jordania)
   Grupo K: POR (Portugal), COD (RD Congo), UZB (Uzbekistán), COL (Colombia)
   Grupo L: ENG (Inglaterra), CRO (Croacia), GHA (Ghana), PAN (Panamá)
-  Especiales FIFA: FW1-FW19
-  Coca-Cola: CC1-CC14
+  Especiales FIFA: FW1-FW19 · Coca-Cola: CC1-CC14
+Cada equipo tiene figuritas del 1 al 20.
 
-- Cada equipo tiene figuritas del 1 al 20.
-- El usuario puede decir cosas como:
-  "conseguí la 5 de Argentina" → ARG5
-  "tengo la ARG5" → ARG5
-  "la figurita 3 de Brasil y la 20 de Francia" → BRA3, FRA20
-  "la MEX10" → MEX10
-  "la especial 3" → FW3
+Cada figurita tiene una acción: "add" (conseguí, tengo, me dieron) o "remove" (borré, perdí, cambié, saqué, me robaron, la di).
+
+Ejemplos:
+  "conseguí la 5 de Argentina" → {code:"ARG5", action:"add"}
+  "perdí la MEX10" → {code:"MEX10", action:"remove"}
+  "cambié la BRA3" → {code:"BRA3", action:"remove"}
+  "conseguí la ARG5 y perdí la MEX10" → [{code:"ARG5",action:"add"},{code:"MEX10",action:"remove"}]
+  "la especial 3" → {code:"FW3", action:"add"}
+
+Cuando no se menciona acción explícita, asumí "add".
 
 Responde SOLO con JSON válido:
 {
-  "stickers": [{"code": "ARG5"}, {"code": "BRA3"}],
+  "stickers": [{"code": "ARG5", "action": "add"}, {"code": "MEX10", "action": "remove"}],
   "unknown": ["texto que no pudiste interpretar"]
 }
 
@@ -371,18 +374,28 @@ async function handleRecordStop() {
       return;
     }
 
-    const added = [], repeated = [];
-    for (const { code } of parsed.stickers) {
+    const added = [], repeated = [], removed = [], notFound = [];
+    for (const { code, action = "add" } of parsed.stickers) {
       if (!STICKER_MAP[code]) continue;
-      const prev = getCount(code);
-      await postEvent("add", code);
-      if (prev === 0) added.push(code); else repeated.push(code);
+
+      if (action === "remove") {
+        if (getCount(code) === 0) { notFound.push(code); continue; }
+        const lastAdd = [...state.events].reverse().find(ev => ev.type === "add" && ev.sticker === code);
+        if (lastAdd) { await deleteEvent(lastAdd.id); removed.push(code); }
+        else { await postEvent("remove", code); removed.push(code); }
+      } else {
+        const prev = getCount(code);
+        await postEvent("add", code);
+        if (prev === 0) added.push(code); else repeated.push(code);
+      }
     }
     renderAll();
 
     let html = "";
     if (added.length)    html += `<div class="result-added"><strong>✓ Al álbum:</strong> ${added.map(c => `<span class="r-tag new">${c}</span>`).join("")}</div>`;
     if (repeated.length) html += `<div class="result-dup"><strong>🔁 Repetidas:</strong> ${repeated.map(c => `<span class="r-tag dup">${c} ×${getCount(c)}</span>`).join("")}</div>`;
+    if (removed.length)  html += `<div class="result-unk"><strong>🗑 Removidas:</strong> ${removed.map(c => `<span class="r-tag">${c}</span>`).join("")}</div>`;
+    if (notFound.length) html += `<div class="result-unk"><strong>⚠ No la tenías:</strong> ${notFound.join(", ")}</div>`;
     if (parsed.unknown?.length) html += `<div class="result-unk"><strong>⚠ No entendí:</strong> ${parsed.unknown.join(", ")}</div>`;
     resultEl.innerHTML = html;
   } catch (err) {
