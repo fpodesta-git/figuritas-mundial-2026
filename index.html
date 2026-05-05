@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Álbum Figuritas Mundial 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🏆 Álbum Mundial 2026</h1>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+        <span id="progress-text">0 / 0 figuritas</span>
+      </div>
+      <div class="header-right">
+        <button class="btn" id="export-btn">Exportar repetidas</button>
+        <button class="btn btn-danger" id="reset-btn">Resetear</button>
+        <button class="btn" id="config-btn">API Key</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Voice input -->
+      <section id="voice-section">
+        <button id="record-btn">
+          <span class="mic-icon">🎤</span>
+          <span>Presioná para hablar</span>
+        </button>
+        <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted)">
+          Mantené presionado · Decí las figuritas que conseguiste · Soltá para procesar
+        </p>
+        <div id="transcript-display"></div>
+        <div id="result-display"></div>
+      </section>
+
+      <!-- Filter -->
+      <div id="filter-controls">
+        <button class="filter-btn active" data-filter="all">Todo el álbum</button>
+        <button class="filter-btn" data-filter="collected">Las que tengo</button>
+        <button class="filter-btn" data-filter="missing">Me faltan</button>
+        <button class="filter-btn" data-filter="duplicates">Repetidas</button>
+      </div>
+
+      <!-- Album grid -->
+      <section id="album-section">
+        <div id="groups-container"></div>
+      </section>
+
+      <!-- Duplicates list -->
+      <section id="duplicates-section">
+        <h2>Figuritas para cambiar</h2>
+        <div id="duplicates-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Config modal -->
+  <div id="config-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Configurar API Key de Groq</h2>
+      <label>API Key</label>
+      <input type="password" id="groq-api-key" placeholder="gsk_...">
+      <p class="modal-hint">
+        Obtené tu API key gratis en <a href="https://console.groq.com" target="_blank">console.groq.com</a>
+      </p>
+      <button class="btn" id="save-config" style="width:100%;padding:0.65rem">Guardar</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script src="js/album.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
