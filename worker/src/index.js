@@ -28,8 +28,8 @@ async function route(request, env) {
   const { pathname } = new URL(request.url);
   const method = request.method;
 
-  if (pathname === "/api/auth/register" && method === "POST") {
-    return handleRegister(env);
+  if (pathname === "/api/auth/login" && method === "POST") {
+    return handleLogin(request, env);
   }
 
   // Groq proxy — sin auth (el key vive en el Worker)
@@ -61,15 +61,34 @@ async function route(request, env) {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-async function handleRegister(env) {
+async function handleLogin(request, env) {
+  const { phoneHash } = await request.json();
+  if (!phoneHash || phoneHash.length !== 64) {
+    return json({ error: "Hash inválido" }, 400);
+  }
+
+  const phoneKey = `phones/${phoneHash}.json`;
+  const existing = await env.ALBUM.get(phoneKey);
+
+  if (existing) {
+    return json(JSON.parse(await existing.text()));
+  }
+
+  // Primera vez con este número → crear tenant
   const tenantId = crypto.randomUUID();
   const token    = crypto.randomUUID();
-  await env.ALBUM.put(
-    `${tenantId}/auth.json`,
-    JSON.stringify({ token }),
-    { httpMetadata: { contentType: "application/json" } }
-  );
-  return json({ tenantId, token });
+  const authData = { tenantId, token };
+
+  await Promise.all([
+    env.ALBUM.put(`${tenantId}/auth.json`, JSON.stringify({ token }), {
+      httpMetadata: { contentType: "application/json" },
+    }),
+    env.ALBUM.put(phoneKey, JSON.stringify(authData), {
+      httpMetadata: { contentType: "application/json" },
+    }),
+  ]);
+
+  return json(authData);
 }
 
 async function checkAuth(request, env, tenantId) {

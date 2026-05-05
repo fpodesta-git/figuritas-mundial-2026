@@ -1,5 +1,4 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
-// Actualizá esta URL después del primer deploy del Worker
 const WORKER_URL = "";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -12,17 +11,29 @@ function setAuth(auth) {
   localStorage.setItem("figuritas_auth", JSON.stringify(auth));
 }
 
+function clearAuth() {
+  localStorage.removeItem("figuritas_auth");
+}
+
 function authHeaders(auth) {
   return { Authorization: `Bearer ${auth.token}` };
 }
 
-async function ensureAuth() {
-  let auth = getAuth();
-  if (auth?.tenantId && auth?.token) return auth;
+async function hashPhone(phone) {
+  const digits = phone.replace(/\D/g, "");
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(digits));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
-  const res = await fetch(`${WORKER_URL}/api/auth/register`, { method: "POST" });
-  if (!res.ok) throw new Error("No se pudo crear la cuenta");
-  auth = await res.json();
+async function loginWithPhone(phone) {
+  const phoneHash = await hashPhone(phone);
+  const res = await fetch(`${WORKER_URL}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneHash }),
+  });
+  if (!res.ok) throw new Error("Error al iniciar sesión");
+  const auth = await res.json();
   setAuth(auth);
   return auth;
 }
@@ -443,16 +454,12 @@ document.getElementById("export-btn").addEventListener("click", () => {
   URL.revokeObjectURL(a.href);
 });
 
-// ─── Reset ────────────────────────────────────────────────────────────────────
+// ─── Logout ───────────────────────────────────────────────────────────────────
 
-document.getElementById("reset-btn").addEventListener("click", async () => {
-  if (!confirm("¿Resetear TODO el álbum? Se perderán todos los datos.")) return;
-  // Borra todos los eventos posteando uno de reset (o re-registrás el tenant)
-  // Por ahora limpiamos localmente y recargamos (el JSONL queda en R2)
-  // TODO: agregar endpoint DELETE /api/album/:tenantId para reset completo
-  localStorage.removeItem("figuritas_auth");
-  showToast("Cuenta reseteada — recargando...");
-  setTimeout(() => location.reload(), 1000);
+document.getElementById("logout-btn").addEventListener("click", () => {
+  if (!confirm("¿Salir? Podés volver a entrar con tu número de celular.")) return;
+  clearAuth();
+  location.reload();
 });
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -465,9 +472,54 @@ function showToast(msg, type = "ok") {
   t._timer = setTimeout(() => t.classList.remove("show"), 3000);
 }
 
+// ─── Login screen ─────────────────────────────────────────────────────────────
+
+function showApp() {
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+}
+
+function showLogin() {
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("app").classList.add("hidden");
+}
+
+async function handleLogin() {
+  const phone = document.getElementById("phone-input").value.trim();
+  const errEl = document.getElementById("login-error");
+  const btn   = document.getElementById("login-btn");
+
+  if (phone.replace(/\D/g, "").length < 8) {
+    errEl.textContent = "Ingresá un número válido";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  errEl.classList.add("hidden");
+  btn.disabled = true;
+  btn.textContent = "Entrando...";
+
+  try {
+    await loginWithPhone(phone);
+    await loadAlbumAndRender();
+    showApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Entrar";
+  }
+}
+
+document.getElementById("login-btn").addEventListener("click", handleLogin);
+document.getElementById("phone-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") handleLogin();
+});
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-async function init() {
+async function loadAlbumAndRender() {
   document.getElementById("loading").classList.remove("hidden");
   document.getElementById("album-section").classList.add("hidden");
 
@@ -481,12 +533,17 @@ async function init() {
   }
 
   renderAll();
+}
 
-  // Muestra el tenant ID en el footer para referencia multi-device
+async function init() {
   const auth = getAuth();
-  if (auth?.tenantId) {
-    const el = document.getElementById("tenant-id");
-    if (el) el.textContent = `ID: ${auth.tenantId.slice(0, 8)}…`;
+  if (auth?.tenantId && auth?.token) {
+    // Ya tiene sesión → ir directo al álbum
+    showApp();
+    await loadAlbumAndRender();
+  } else {
+    // Sin sesión → mostrar login
+    showLogin();
   }
 }
 

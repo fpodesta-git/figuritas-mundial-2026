@@ -7,7 +7,24 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="app">
+
+  <!-- ── Pantalla de login ─────────────────────────────────────────────── -->
+  <div id="login-screen">
+    <div class="login-card">
+      <h1>🏆 Álbum Mundial 2026</h1>
+      <p class="login-subtitle">Ingresá tu número de celular para acceder a tu álbum desde cualquier dispositivo.</p>
+      <div class="login-field">
+        <label>Número de celular</label>
+        <input id="phone-input" type="tel" placeholder="+54 9 11 1234-5678" inputmode="tel" autocomplete="tel">
+      </div>
+      <button id="login-btn" class="btn-primary">Entrar</button>
+      <p class="login-hint">Tu número nunca sale de tu dispositivo — usamos un hash anónimo para identificarte.</p>
+      <div id="login-error" class="login-error hidden"></div>
+    </div>
+  </div>
+
+  <!-- ── App principal ─────────────────────────────────────────────────── -->
+  <div id="app" class="hidden">
     <header>
       <h1>🏆 Álbum Mundial 2026</h1>
       <div id="progress-bar">
@@ -16,12 +33,11 @@
       </div>
       <div class="header-right">
         <button class="btn" id="export-btn">Exportar repetidas</button>
-        <button class="btn btn-danger" id="reset-btn">Resetear</button>
+        <button class="btn btn-danger" id="logout-btn">Salir</button>
       </div>
     </header>
 
     <main>
-      <!-- Voice input -->
       <section id="voice-section">
         <button id="record-btn">
           <span class="mic-icon">🎤</span>
@@ -34,12 +50,10 @@
         <div id="result-display"></div>
       </section>
 
-      <!-- Loading -->
       <div id="loading" class="hidden" style="text-align:center;padding:3rem;color:var(--text-muted)">
         Cargando álbum...
       </div>
 
-      <!-- Filter -->
       <div id="filter-controls">
         <button class="filter-btn active" data-filter="all">Todo el álbum</button>
         <button class="filter-btn" data-filter="collected">Las que tengo</button>
@@ -47,21 +61,15 @@
         <button class="filter-btn" data-filter="duplicates">Repetidas</button>
       </div>
 
-      <!-- Album grid -->
       <section id="album-section" class="hidden">
         <div id="groups-container"></div>
       </section>
 
-      <!-- Duplicates -->
       <section id="duplicates-section">
         <h2>Figuritas para cambiar</h2>
         <div id="duplicates-list"></div>
       </section>
     </main>
-
-    <footer>
-      <span id="tenant-id" style="font-size:0.7rem;color:var(--text-muted);font-family:monospace"></span>
-    </footer>
   </div>
 
   <div id="toast"></div>
