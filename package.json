@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "build": "mkdir -p dist/css dist/js && cp index.html dist/ && cp -r css/. dist/css/ && cp -r js/. dist/js/ && cp _worker.js dist/"
+  }
+}
