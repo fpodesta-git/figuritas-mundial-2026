@@ -412,14 +412,11 @@ document.getElementById("export-btn").addEventListener("click", () => {
     .filter(([, c]) => c >= 2)
     .map(([code, c]) => {
       const info = STICKER_MAP[code];
-      return `${code} - ${info?.teamName || ""} (×${c-1} para cambiar)`;
+      return `${code} ${info?.teamName || ""} ×${c - 1}`;
     }).sort();
   if (!dups.length) { showToast("No tenés figuritas repetidas"); return; }
-  const a = Object.assign(document.createElement("a"), {
-    href: URL.createObjectURL(new Blob([`Repetidas - Mundial 2026\n${"─".repeat(40)}\n${dups.join("\n")}`], {type:"text/plain"})),
-    download: "repetidas-mundial-2026.txt"
-  });
-  a.click(); URL.revokeObjectURL(a.href);
+  const text = `🏆 Mis figuritas repetidas - Mundial 2026\n\n${dups.join("\n")}\n\n_Compartido desde fichus.ar_`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 });
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
