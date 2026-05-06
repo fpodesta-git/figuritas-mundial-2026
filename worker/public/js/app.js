@@ -279,19 +279,31 @@ function renderAlbum() {
   }
 }
 
+function groupDuplicates() {
+  const byTeam = {};
+  for (const [code, count] of Object.entries(state.collected)) {
+    if (count < 2) continue;
+    const info = STICKER_MAP[code];
+    if (!info) continue;
+    const key = info.section;
+    if (!byTeam[key]) byTeam[key] = { flag: info.flag, numbers: [] };
+    byTeam[key].numbers.push(info.localN);
+  }
+  return Object.entries(byTeam)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([team, { flag, numbers }]) => ({
+      team, flag, numbers: numbers.sort((a, b) => a - b)
+    }));
+}
+
 function renderDuplicates() {
   const list = document.getElementById("duplicates-list");
-  const dups = Object.entries(state.collected)
-    .filter(([, c]) => c >= 2)
-    .map(([code, count]) => ({ code, count, info: STICKER_MAP[code] }))
-    .filter(d => d.info)
-    .sort((a, b) => a.code.localeCompare(b.code));
+  const groups = groupDuplicates();
 
-  list.innerHTML = dups.length
-    ? dups.map(d => `<div class="dup-item">
-        <span class="dup-n">${d.code}</span>
-        <span class="dup-desc">${d.info.teamName}</span>
-        <span class="dup-count">×${d.count - 1} para cambiar</span>
+  list.innerHTML = groups.length
+    ? groups.map(g => `<div class="dup-item">
+        <span class="dup-n">${g.team} ${g.flag}</span>
+        <span class="dup-desc">${g.numbers.join(", ")}</span>
       </div>`).join("")
     : `<p class="empty-msg">Sin figuritas repetidas por ahora</p>`;
 }
@@ -428,14 +440,10 @@ document.querySelectorAll(".filter-btn").forEach(btn => {
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 document.getElementById("export-btn").addEventListener("click", () => {
-  const dups = Object.entries(state.collected)
-    .filter(([, c]) => c >= 2)
-    .map(([code, c]) => {
-      const info = STICKER_MAP[code];
-      return `${code} ${info?.teamName || ""} ×${c - 1}`;
-    }).sort();
-  if (!dups.length) { showToast("No tenés figuritas repetidas"); return; }
-  const text = `🏆 Mis figuritas repetidas - Mundial 2026\n\n${dups.join("\n")}\n\n_Compartido desde fichus.ar_`;
+  const groups = groupDuplicates();
+  if (!groups.length) { showToast("No tenés figuritas repetidas"); return; }
+  const lines = groups.map(g => `${g.team} ${g.flag}: ${g.numbers.join(", ")}`);
+  const text = `🏆 Mis figuritas repetidas - Mundial 2026\n\n${lines.join("\n")}\n\nfichus.ar`;
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 });
 
