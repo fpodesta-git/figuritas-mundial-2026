@@ -302,7 +302,8 @@ function renderDuplicates() {
 
   list.innerHTML = groups.length
     ? groups.map(g => `<div class="dup-item">
-        <span class="dup-n">${g.team} ${g.flag}</span>
+        <span class="dup-n">${g.team}</span>
+        <span class="dup-flag">${g.flag}</span>
         <span class="dup-desc">${g.numbers.join(", ")}</span>
       </div>`).join("")
     : `<p class="empty-msg">Sin figuritas repetidas por ahora</p>`;

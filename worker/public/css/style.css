@@ -447,8 +447,9 @@ span.info { color: var(--text-muted); font-size: 0.9rem; }
   background: var(--surface2);
 }
 
-.dup-n { font-weight: 700; color: var(--accent); min-width: 50px; font-size: 0.85rem; }
-.dup-desc { flex: 1; font-size: 0.82rem; color: var(--text); }
+.dup-n { font-weight: 700; color: var(--accent); min-width: 40px; font-size: 0.85rem; }
+.dup-flag { font-size: 1.1rem; line-height: 1; }
+.dup-desc { flex: 1; font-size: 0.85rem; color: var(--text); }
 .dup-count { font-size: 0.78rem; color: var(--accent2); font-weight: 600; white-space: nowrap; }
 
 .empty-msg { color: var(--text-muted); text-align: center; padding: 1rem; font-size: 0.9rem; }
