@@ -11,14 +11,41 @@
   <!-- ── Pantalla de login ─────────────────────────────────────────────── -->
   <div id="login-screen">
     <div class="login-card">
-      <h1>🏆 Álbum Mundial 2026</h1>
-      <p class="login-subtitle">Ingresá tu número de celular para acceder a tu álbum desde cualquier dispositivo.</p>
+      <div class="login-brand">
+        <h1>fichus.ar</h1>
+        <p class="login-tagline">Tu álbum Panini Mundial 2026 en el celular</p>
+      </div>
+
+      <div class="onboarding">
+        <div class="ob-step">
+          <span class="ob-icon">📱</span>
+          <div>
+            <strong>Ingresá con tu número</strong>
+            <p>Tu álbum queda guardado y podés abrirlo desde cualquier dispositivo.</p>
+          </div>
+        </div>
+        <div class="ob-step">
+          <span class="ob-icon">🎤</span>
+          <div>
+            <strong>Contale las que conseguiste</strong>
+            <p>Hablá por voz: "conseguí la 5 de Argentina y la 10 de Brasil".</p>
+          </div>
+        </div>
+        <div class="ob-step">
+          <span class="ob-icon">💬</span>
+          <div>
+            <strong>Compartí las repes por WhatsApp</strong>
+            <p>Un toque y tus repetidas van directo al chat para organizar cambios.</p>
+          </div>
+        </div>
+      </div>
+
       <div class="login-field">
         <label>Número de celular</label>
         <input id="phone-input" type="tel" placeholder="+54 9 11 1234-5678" inputmode="tel" autocomplete="tel">
       </div>
       <button id="login-btn" class="btn-primary">Entrar</button>
-      <p class="login-hint">Tu número nunca sale de tu dispositivo — usamos un hash anónimo para identificarte.</p>
+      <p class="login-hint">Tu número nunca sale de tu dispositivo.</p>
       <div id="login-error" class="login-error hidden"></div>
     </div>
   </div>
