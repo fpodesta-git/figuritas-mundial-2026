@@ -72,37 +72,78 @@
     </header>
 
     <main>
-      <section id="voice-section">
-        <button id="record-btn">
-          <span class="mic-icon">🎤</span>
-          <span>Presioná para hablar</span>
-        </button>
-        <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted)">
-          Mantené presionado · Decí las figuritas que conseguiste · Soltá para procesar
-        </p>
-        <div id="transcript-display"></div>
-        <div id="result-display"></div>
-      </section>
-
-      <div id="loading" class="hidden" style="text-align:center;padding:3rem;color:var(--text-muted)">
-        Cargando álbum...
+      <!-- Tabs principales -->
+      <div id="main-tabs">
+        <button class="main-tab active" data-tab="album">Mi álbum</button>
+        <button class="main-tab" data-tab="market">🏪 Mercado</button>
       </div>
 
-      <div id="filter-controls">
-        <button class="filter-btn active" data-filter="all">Todo el álbum</button>
-        <button class="filter-btn" data-filter="collected">Las que tengo</button>
-        <button class="filter-btn" data-filter="missing">Me faltan</button>
-        <button class="filter-btn" data-filter="duplicates">Repetidas</button>
+      <!-- ── Tab: Mi álbum ── -->
+      <div id="tab-album">
+        <section id="voice-section">
+          <button id="record-btn">
+            <span class="mic-icon">🎤</span>
+            <span>Presioná para hablar</span>
+          </button>
+          <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted)">
+            Mantené presionado · Decí las figuritas que conseguiste · Soltá para procesar
+          </p>
+          <div id="transcript-display"></div>
+          <div id="result-display"></div>
+        </section>
+
+        <div id="loading" class="hidden" style="text-align:center;padding:3rem;color:var(--text-muted)">
+          Cargando álbum...
+        </div>
+
+        <div id="filter-controls">
+          <button class="filter-btn active" data-filter="all">Todo el álbum</button>
+          <button class="filter-btn" data-filter="collected">Las que tengo</button>
+          <button class="filter-btn" data-filter="missing">Me faltan</button>
+          <button class="filter-btn" data-filter="duplicates">Repetidas</button>
+        </div>
+
+        <section id="album-section" class="hidden">
+          <div id="groups-container"></div>
+        </section>
+
+        <section id="duplicates-section">
+          <h2>Figuritas para cambiar</h2>
+          <div id="duplicates-list"></div>
+        </section>
       </div>
 
-      <section id="album-section" class="hidden">
-        <div id="groups-container"></div>
-      </section>
+      <!-- ── Tab: Mercado ── -->
+      <div id="tab-market" class="hidden">
 
-      <section id="duplicates-section">
-        <h2>Figuritas para cambiar</h2>
-        <div id="duplicates-list"></div>
-      </section>
+        <!-- Mi publicación -->
+        <section class="market-section">
+          <h2>Mi publicación</h2>
+          <div id="my-listing-status" class="market-status"></div>
+          <div class="market-form">
+            <input id="market-alias" type="text" placeholder="Tu nombre o apodo" maxlength="30">
+            <input id="market-contact" type="tel" placeholder="WhatsApp (opcional): 1198765432" inputmode="tel">
+            <button id="market-publish-btn" class="btn-primary">Publicar mis repes</button>
+            <button id="market-unpublish-btn" class="btn btn-danger hidden">Dar de baja</button>
+          </div>
+          <p class="login-hint">Tus repes se publican para que otros usuarios puedan encontrarte. Tu alias y número de WhatsApp (si lo ponés) serán visibles.</p>
+        </section>
+
+        <!-- Mis matches -->
+        <section class="market-section">
+          <h2>🎯 Mis matches</h2>
+          <p class="market-hint">Usuarios con los que podés hacer cambios en ambas direcciones.</p>
+          <div id="market-matches"></div>
+        </section>
+
+        <!-- Explorar -->
+        <section class="market-section">
+          <h2>Explorar</h2>
+          <input id="market-search" type="text" placeholder="Buscar figurita: ARG5, Brasil, MEX..." class="market-search">
+          <div id="market-listings"></div>
+        </section>
+
+      </div>
     </main>
   </div>
 

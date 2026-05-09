@@ -455,6 +455,179 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   clearAuth(); location.reload();
 });
 
+// ─── Main tabs ────────────────────────────────────────────────────────────────
+
+document.querySelectorAll(".main-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.getElementById("tab-album").classList.toggle("hidden", tab !== "album");
+    document.getElementById("tab-market").classList.toggle("hidden", tab !== "market");
+    if (tab === "market") renderMarket();
+  });
+});
+
+// ─── Mercado ──────────────────────────────────────────────────────────────────
+
+let marketListings = [];
+
+function myOffers() {
+  return Object.entries(state.collected).filter(([, c]) => c >= 2).map(([code]) => code);
+}
+function myNeeds() {
+  return Object.keys(STICKER_MAP).filter(code => !state.collected[code]);
+}
+
+async function fetchMarket() {
+  const res = await fetch(`${WORKER_URL}/api/market`);
+  if (!res.ok) throw new Error("Error cargando mercado");
+  const { listings } = await res.json();
+  marketListings = listings;
+}
+
+async function publishMarket() {
+  const auth = getAuth();
+  const alias   = document.getElementById("market-alias").value.trim();
+  const contact = document.getElementById("market-contact").value.trim();
+  if (!alias) { showToast("Ingresá un nombre o apodo", "error"); return; }
+
+  const btn = document.getElementById("market-publish-btn");
+  btn.disabled = true; btn.textContent = "Publicando...";
+  try {
+    await fetch(`${WORKER_URL}/api/market`, {
+      method: "POST",
+      headers: { ...authHeaders(auth), "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId: auth.tenantId, alias, contact, offers: myOffers(), needs: myNeeds() }),
+    });
+    showToast("¡Repes publicadas!");
+    await fetchMarket();
+    renderMarket();
+  } catch (err) { showToast(err.message, "error"); }
+  finally { btn.disabled = false; btn.textContent = "Publicar mis repes"; }
+}
+
+async function unpublishMarket() {
+  const auth = getAuth();
+  if (!confirm("¿Dar de baja tu publicación del mercado?")) return;
+  await fetch(`${WORKER_URL}/api/market`, {
+    method: "DELETE",
+    headers: { ...authHeaders(auth), "Content-Type": "application/json" },
+    body: JSON.stringify({ tenantId: auth.tenantId }),
+  });
+  showToast("Publicación dada de baja");
+  await fetchMarket();
+  renderMarket();
+}
+
+function relativeTime(iso) {
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 1)  return "ahora";
+  if (mins < 60) return `hace ${mins}m`;
+  const hs = Math.round(mins / 60);
+  if (hs < 24)   return `hace ${hs}h`;
+  return `hace ${Math.round(hs / 24)}d`;
+}
+
+function marketCardHTML(listing, myNeedSet, myOfferSet, showMatchHighlight) {
+  const isMe = listing.tenantId === getAuth()?.tenantId;
+  const theyHave = listing.offers.filter(c => myNeedSet.has(c));
+  const theyNeed = listing.needs.filter(c => myOfferSet.has(c));
+
+  const tags = listing.offers.slice(0, 20).map(c => {
+    const cls = showMatchHighlight && myNeedSet.has(c) ? "market-tag match" : "market-tag";
+    return `<span class="${cls}">${c}</span>`;
+  }).join("");
+  const more = listing.offers.length > 20 ? `<span class="market-tag">+${listing.offers.length - 20}</span>` : "";
+
+  let matchLine = "";
+  if (showMatchHighlight && theyHave.length) {
+    matchLine = `<div class="market-score">✓ Tiene ${theyHave.length} que te falta${theyHave.length > 1 ? "n" : ""} · `;
+    matchLine += theyNeed.length ? `vos tenés ${theyNeed.length} que le falta${theyNeed.length > 1 ? "n" : ""}` : "no sabe lo que le falta";
+    matchLine += `</div>`;
+  }
+
+  const waBtn = listing.contact
+    ? `<a href="https://wa.me/54${listing.contact}?text=${encodeURIComponent(`Hola ${listing.alias}! Vi en fichus.ar que tenés figuritas para cambiar. ¿Coordinamos?`)}" target="_blank" class="btn" style="text-decoration:none;font-size:0.78rem">💬 WhatsApp</a>`
+    : "";
+
+  return `<div class="market-card">
+    <div class="market-card-header">
+      <span class="market-card-alias">${isMe ? "⭐ " : ""}${listing.alias}</span>
+      <span class="market-card-time">${relativeTime(listing.updatedAt)}</span>
+    </div>
+    ${matchLine}
+    <div class="market-card-offers">${tags}${more}</div>
+    <div class="market-card-actions">${waBtn}</div>
+  </div>`;
+}
+
+function renderMarket() {
+  const auth = getAuth();
+  const myNeedSet  = new Set(myNeeds());
+  const myOfferSet = new Set(myOffers());
+  const myListing  = marketListings.find(l => l.tenantId === auth?.tenantId);
+
+  // Mi publicación
+  const statusEl  = document.getElementById("my-listing-status");
+  const publishBtn = document.getElementById("market-publish-btn");
+  const unpublishBtn = document.getElementById("market-unpublish-btn");
+
+  if (myListing) {
+    statusEl.className = "market-status published";
+    statusEl.textContent = `Publicado ${relativeTime(myListing.updatedAt)} · ${myListing.offers.length} repes`;
+    document.getElementById("market-alias").value = myListing.alias;
+    document.getElementById("market-contact").value = myListing.contact || "";
+    publishBtn.textContent = "Actualizar";
+    unpublishBtn.classList.remove("hidden");
+  } else {
+    statusEl.className = "market-status";
+    statusEl.textContent = "No publicado — publicá tus repes para que otros puedan encontrarte";
+    publishBtn.textContent = "Publicar mis repes";
+    unpublishBtn.classList.add("hidden");
+  }
+
+  // Matches
+  const matchEl = document.getElementById("market-matches");
+  const matches = marketListings
+    .filter(l => l.tenantId !== auth?.tenantId)
+    .map(l => ({ ...l, score: l.offers.filter(c => myNeedSet.has(c)).length + l.needs.filter(c => myOfferSet.has(c)).length }))
+    .filter(l => l.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  matchEl.innerHTML = matches.length
+    ? matches.map(l => marketCardHTML(l, myNeedSet, myOfferSet, true)).join("")
+    : `<p class="market-hint">Sin matches por ahora — aparecen cuando otros usuarios publican figuritas que vos necesitás.</p>`;
+
+  // Explorar (con filtro)
+  renderMarketListings();
+}
+
+function renderMarketListings() {
+  const auth    = getAuth();
+  const query   = document.getElementById("market-search").value.trim().toLowerCase();
+  const myNeedSet  = new Set(myNeeds());
+  const myOfferSet = new Set(myOffers());
+
+  let listings = marketListings.filter(l => l.tenantId !== auth?.tenantId);
+
+  if (query) {
+    listings = listings.filter(l =>
+      l.alias.toLowerCase().includes(query) ||
+      l.offers.some(c => c.toLowerCase().includes(query) ||
+        (STICKER_MAP[c]?.teamName || "").toLowerCase().includes(query))
+    );
+  }
+
+  document.getElementById("market-listings").innerHTML = listings.length
+    ? listings.map(l => marketCardHTML(l, myNeedSet, myOfferSet, false)).join("")
+    : `<p class="market-hint">${query ? "Sin resultados para tu búsqueda." : "Ningún usuario publicó sus repes todavía."}</p>`;
+}
+
+document.getElementById("market-publish-btn").addEventListener("click", publishMarket);
+document.getElementById("market-unpublish-btn").addEventListener("click", unpublishMarket);
+document.getElementById("market-search").addEventListener("input", renderMarketListings);
+
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
 function showToast(msg, type = "ok") {

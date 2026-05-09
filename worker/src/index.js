@@ -56,6 +56,21 @@ async function route(request, env) {
     return handleDeleteEvent(env, tid, evId);
   }
 
+  // Mercado
+  if (pathname === "/api/market" && method === "GET") {
+    return handleMarketList(env);
+  }
+  if (pathname === "/api/market" && method === "POST") {
+    const body = await request.json();
+    if (!await checkAuth(request, env, body.tenantId)) return json({ error: "Unauthorized" }, 401);
+    return handleMarketPublish(env, body);
+  }
+  if (pathname === "/api/market" && method === "DELETE") {
+    const body = await request.json();
+    if (!await checkAuth(request, env, body.tenantId)) return json({ error: "Unauthorized" }, 401);
+    return handleMarketUnpublish(env, body.tenantId);
+  }
+
   return json({ error: "Not found" }, 404);
 }
 
@@ -143,6 +158,40 @@ async function handleAddEvent(request, env, tenantId) {
 async function handleDeleteEvent(env, tenantId, evId) {
   const events = await readJsonl(env, `${tenantId}/album.jsonl`);
   await writeJsonl(env, `${tenantId}/album.jsonl`, events.filter(e => e.id !== evId));
+  return json({ ok: true });
+}
+
+// ─── Mercado ──────────────────────────────────────────────────────────────────
+
+async function handleMarketList(env) {
+  const list = await env.ALBUM.list({ prefix: "market/" });
+  const listings = (await Promise.all(
+    list.objects.map(async o => {
+      const obj = await env.ALBUM.get(o.key);
+      if (!obj) return null;
+      try { return JSON.parse(await obj.text()); } catch { return null; }
+    })
+  )).filter(Boolean);
+  return json({ listings });
+}
+
+async function handleMarketPublish(env, { tenantId, alias, contact, offers, needs }) {
+  const entry = {
+    tenantId,
+    alias: (alias || "Anónimo").slice(0, 30),
+    contact: contact ? contact.replace(/\D/g, "").slice(0, 15) : null,
+    offers: (offers || []).slice(0, 500),
+    needs:  (needs  || []).slice(0, 500),
+    updatedAt: new Date().toISOString(),
+  };
+  await env.ALBUM.put(`market/${tenantId}.json`, JSON.stringify(entry), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return json({ ok: true });
+}
+
+async function handleMarketUnpublish(env, tenantId) {
+  await env.ALBUM.delete(`market/${tenantId}.json`);
   return json({ ok: true });
 }
 
