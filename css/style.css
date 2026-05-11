@@ -177,6 +177,41 @@ span.warn { color: var(--accent); font-size: 0.9rem; }
 span.error { color: var(--red); font-size: 0.9rem; }
 span.info { color: var(--text-muted); font-size: 0.9rem; }
 
+/* ── How it works ────────────────────────────────────────────────────────── */
+#how-it-works {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.how-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.how-item strong { color: var(--text); }
+
+.how-item--highlight {
+  border-color: rgba(245,166,35,.45);
+  background: rgba(245,166,35,.07);
+}
+
+.how-item--highlight strong { color: var(--accent); }
+
+.how-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
 /* ── Filter controls ─────────────────────────────────────────────────────── */
 #filter-controls {
   display: flex;
