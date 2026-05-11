@@ -327,28 +327,34 @@ span.info { color: var(--text-muted); font-size: 0.9rem; }
 
 /* ── Filter controls ─────────────────────────────────────────────────────── */
 #filter-controls {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
   margin-bottom: 1.5rem;
 }
 
-.filter-btn {
-  padding: 0.4rem 1rem;
-  border-radius: 999px;
+#team-select {
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface2);
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 0.82rem;
+  color: var(--text);
+  font-size: 0.9rem;
   font-weight: 600;
-  transition: all 0.15s;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237986a3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  padding-right: 2.5rem;
 }
-.filter-btn:hover { border-color: var(--accent2); color: var(--text); }
-.filter-btn.active {
-  background: var(--accent2);
+
+#team-select:focus {
+  outline: none;
   border-color: var(--accent2);
-  color: #fff;
+}
+
+#team-select option, #team-select optgroup {
+  background: var(--surface2);
+  color: var(--text);
 }
 
 /* ── Group sections ──────────────────────────────────────────────────────── */

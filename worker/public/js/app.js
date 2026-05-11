@@ -205,7 +205,7 @@ async function stopRecording() {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
-let currentFilter = "all";
+let currentFilter = "all"; // "all" | team code like "ARG" | "FW" | "CC"
 
 function renderProgress() {
   const { inAlbum, duplicates, total } = getStats();
@@ -213,14 +213,6 @@ function renderProgress() {
   document.getElementById("progress-fill").style.width = pct + "%";
   document.getElementById("progress-text").textContent =
     `${inAlbum} / ${total} (${pct}%) · ${duplicates} repetida${duplicates !== 1 ? "s" : ""}`;
-}
-
-function filterOk(code) {
-  const c = getCount(code);
-  if (currentFilter === "collected")  return c >= 1;
-  if (currentFilter === "missing")    return c === 0;
-  if (currentFilter === "duplicates") return c >= 2;
-  return true;
 }
 
 function stickerEl(code) {
@@ -234,17 +226,15 @@ function stickerEl(code) {
 function renderAlbum() {
   const container = document.getElementById("groups-container");
   container.innerHTML = "";
+  const f = currentFilter;
 
-  // FIFA Especiales
-  const fwCodes = Array.from({length: FW_COUNT}, (_, i) => `FW${i+1}`);
-  const ccCodes = Array.from({length: CC_COUNT}, (_, i) => `CC${i+1}`);
+  // Especiales
   const specials = [
-    { name: "🏆 FIFA Especiales", codes: fwCodes, color: "#f5a623" },
-    { name: "🥤 Coca-Cola", codes: ccCodes, color: "#e74c3c" },
+    { key: "FW", name: "🏆 FIFA Especiales", codes: Array.from({length: FW_COUNT}, (_, i) => `FW${i+1}`), color: "#f5a623" },
+    { key: "CC", name: "🥤 Coca-Cola",       codes: Array.from({length: CC_COUNT}, (_, i) => `CC${i+1}`), color: "#e74c3c" },
   ];
-
   for (const s of specials) {
-    if (currentFilter !== "all" && !s.codes.some(filterOk)) continue;
+    if (f !== "all" && f !== s.key) continue;
     const div = document.createElement("div");
     div.className = "group-section";
     div.innerHTML = `<h3 style="border-color:${s.color}">${s.name}</h3>
@@ -254,12 +244,13 @@ function renderAlbum() {
 
   // Grupos
   for (const group of GROUPS) {
+    if (f !== "all" && !group.teams.some(t => t.code === f)) continue;
     const teamsRow = document.createElement("div");
     teamsRow.className = "teams-row";
 
     for (const team of group.teams) {
+      if (f !== "all" && team.code !== f) continue;
       const codes = Array.from({length: 20}, (_, i) => `${team.code}${i+1}`);
-      if (currentFilter !== "all" && !codes.some(filterOk)) continue;
       const collected = codes.filter(c => getCount(c) >= 1).length;
       const teamDiv = document.createElement("div");
       teamDiv.className = "team-card";
@@ -273,7 +264,7 @@ function renderAlbum() {
       teamsRow.appendChild(teamDiv);
     }
 
-    if (teamsRow.children.length === 0 && currentFilter !== "all") continue;
+    if (teamsRow.children.length === 0) continue;
     const groupDiv = document.createElement("div");
     groupDiv.className = "group-section";
     groupDiv.innerHTML = `<h3 style="border-color:${group.color}">${group.name}</h3>`;
@@ -430,16 +421,35 @@ async function handleRecordStop() {
   }
 }
 
-// ─── Filters ──────────────────────────────────────────────────────────────────
+// ─── Team selector ────────────────────────────────────────────────────────────
 
-document.querySelectorAll(".filter-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
+function buildTeamSelect() {
+  const sel = document.getElementById("team-select");
+
+  const specOg = document.createElement("optgroup");
+  specOg.label = "✨ Especiales";
+  [["FW", "🏆 FIFA Especiales"], ["CC", "🥤 Coca-Cola"]].forEach(([v, t]) => {
+    const o = document.createElement("option"); o.value = v; o.textContent = t; specOg.appendChild(o);
+  });
+  sel.appendChild(specOg);
+
+  for (const group of GROUPS) {
+    const og = document.createElement("optgroup");
+    og.label = group.name;
+    for (const team of group.teams) {
+      const o = document.createElement("option");
+      o.value = team.code;
+      o.textContent = `${team.flag} ${team.name}`;
+      og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+
+  sel.addEventListener("change", () => {
+    currentFilter = sel.value;
     renderAlbum();
   });
-});
+}
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 
@@ -685,6 +695,7 @@ async function loadAlbumAndRender() {
 }
 
 async function init() {
+  buildTeamSelect();
   const auth = getAuth();
   if (auth?.tenantId && auth?.token) { showApp(); await loadAlbumAndRender(); }
   else showLogin();
