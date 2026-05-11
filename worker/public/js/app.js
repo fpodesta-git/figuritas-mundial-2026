@@ -137,7 +137,10 @@ Ejemplos:
   "cambié la BRA3" → {code:"BRA3", action:"remove"}
   "conseguí la ARG5 y perdí la MEX10" → [{code:"ARG5",action:"add"},{code:"MEX10",action:"remove"}]
   "la especial 3" → {code:"FW3", action:"add"}
+  "cambié la 17 de Argelia por la 3 de Portugal" → [{code:"ALG17",action:"remove"},{code:"POR3",action:"add"}]
+  "cambié la BRA5 por la ARG10 y la MEX3 por la FRA7" → [{code:"BRA5",action:"remove"},{code:"ARG10",action:"add"},{code:"MEX3",action:"remove"},{code:"FRA7",action:"add"}]
 
+El patrón "cambié X por Y" siempre genera dos entradas: remove para X, add para Y.
 Cuando no se menciona acción explícita, asumí "add".
 
 Correcciones de transcripción de voz (Whisper confunde nombres de países con palabras en español):
