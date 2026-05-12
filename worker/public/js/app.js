@@ -273,6 +273,14 @@ function renderAlbum() {
   }
 }
 
+const TEAM_ORDER = (() => {
+  const order = { FW: 0 };
+  let idx = 1;
+  for (const group of GROUPS) for (const team of group.teams) order[team.code] = idx++;
+  order["CC"] = idx;
+  return order;
+})();
+
 function groupDuplicates() {
   const byTeam = {};
   for (const [code, count] of Object.entries(state.collected)) {
@@ -284,7 +292,7 @@ function groupDuplicates() {
     byTeam[key].numbers.push(info.localN);
   }
   return Object.entries(byTeam)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (TEAM_ORDER[a] ?? 999) - (TEAM_ORDER[b] ?? 999))
     .map(([team, { flag, numbers }]) => ({
       team, flag, numbers: numbers.sort((a, b) => a - b)
     }));
