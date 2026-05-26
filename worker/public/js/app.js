@@ -469,6 +469,30 @@ document.getElementById("export-btn").addEventListener("click", () => {
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 });
 
+function groupMissing() {
+  const byTeam = {};
+  for (const code of myNeeds()) {
+    const info = STICKER_MAP[code];
+    if (!info) continue;
+    const key = info.section;
+    if (!byTeam[key]) byTeam[key] = { flag: info.flag, numbers: [] };
+    byTeam[key].numbers.push(info.localN);
+  }
+  return Object.entries(byTeam)
+    .sort(([a], [b]) => (TEAM_ORDER[a] ?? 999) - (TEAM_ORDER[b] ?? 999))
+    .map(([team, { flag, numbers }]) => ({
+      team, flag, numbers: numbers.sort((a, b) => a - b)
+    }));
+}
+
+document.getElementById("share-missing-btn").addEventListener("click", () => {
+  const groups = groupMissing();
+  if (!groups.length) { showToast("¡Ya tenés todas las figuritas!"); return; }
+  const lines = groups.map(g => `${g.team} ${g.flag}: ${g.numbers.join(", ")}`);
+  const text = `📋 Me faltan estas figuritas - Mundial 2026\n\n${lines.join("\n")}\n\nfichus.ar`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+});
+
 // ─── Logout ───────────────────────────────────────────────────────────────────
 
 document.getElementById("logout-btn").addEventListener("click", () => {
